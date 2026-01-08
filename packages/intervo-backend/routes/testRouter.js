@@ -1,6 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
+
+router.use(apiLimiter);
 
 // Test endpoint to make calls to the workflow API
 router.post("/make-call", async (req, res) => {

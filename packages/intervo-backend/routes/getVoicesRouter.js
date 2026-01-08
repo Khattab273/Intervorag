@@ -2,11 +2,13 @@ const express = require("express");
 const router = express.Router();
 const Voice = require("../models/Voice");
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const fetchElevenLabsVoices = require("../services/fetchVoices/fetchElevenLabsVoices");
 const fetchAzureVoices = require("../services/fetchVoices/fetchAzureVoices");
 const fetchGoogleVoices = require("../services/fetchVoices/fetchGoogleVoices");
 const fetchAWSVoices = require("../services/fetchVoices/fetchAWSVoices");
 
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 /**

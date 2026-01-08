@@ -2,13 +2,15 @@ const express = require("express");
 const router = express.Router();
 const PhoneNumber = require("../models/PhoneNumber");
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const twilio = require("twilio");
 const Agent = require("../models/Agent");
 const User = require("../models/User");
 const { verifyPhoneNumberWorkspace } = require("../lib/checkOwnership");
 const { getWorkspaceAndOwner } = require('../lib/workspaceUtils');
 
-// Apply authentication middleware
+// Apply rate limiting and authentication middleware
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 // Fetch all phone numbers owned by the user: Called when the user goes to phone numbers page

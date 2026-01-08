@@ -5,12 +5,14 @@ const axios = require("axios");
 const User = require("../models/User");
 const multer = require("multer");
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const { verifySourceWorkspace } = require("../lib/checkOwnership");
 const { getWorkspaceAndOwner } = require('../lib/workspaceUtils');
 const Agent = require("../models/Agent");
 
 
-// Apply authentication middleware to all routes
+// Apply rate limiting and authentication middleware to all routes
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 // Configuration for Python API

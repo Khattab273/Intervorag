@@ -4,11 +4,13 @@ const Activity = require('../models/Activity');
 const User = require('../models/User');
 const Workspace = require('../models/Workspace');
 const authenticateUser = require('../lib/authMiddleware');
+const { apiLimiter } = require('../lib/rateLimitMiddleware');
 const mongoose = require("mongoose");
 const twilio = require("twilio");
 const { getWorkspaceAndOwner } = require("../lib/workspaceUtils");
 
-// Apply authentication middleware
+// Apply rate limiting and authentication middleware
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 router.get('/agent-stats', async (req, res) => {

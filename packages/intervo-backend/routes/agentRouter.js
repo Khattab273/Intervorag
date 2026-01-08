@@ -5,6 +5,7 @@ const Voice = require("../models/Voice");
 const Tool = require("../models/Tool");
 const { v4: uuidv4 } = require("uuid");
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const User = require("../models/User");
 const PhoneNumber = require("../models/PhoneNumber");
 const { verifyAgentWorkspace } = require("../lib/checkOwnership");
@@ -266,6 +267,7 @@ const processOrchestrationFlowTools = async (orchestrationFlow, agent, userId) =
 };
 
 // Apply authentication middleware to all routes
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 // Get all agents for the authenticated user
