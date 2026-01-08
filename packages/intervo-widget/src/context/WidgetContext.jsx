@@ -186,6 +186,17 @@ export function WidgetProvider({
     }
   };
 
+  const getWidgetAuthHeaders = async () => {
+    const token = await getWsToken();
+    if (!token) {
+      throw new Error("Failed to get widget access token");
+    }
+
+    return {
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
   const setActiveComponent = (component) => {
     dispatch({ type: "SET_ACTIVE_COMPONENT", payload: component });
   };
@@ -196,12 +207,14 @@ export function WidgetProvider({
       // Extract country code and phone number from the phone input
       const phoneNumber = contactData.phone; // Keep the full phone number with country code
 
+      const widgetHeaders = await getWidgetAuthHeaders();
       const response = await fetch(
         `${backendAPIUrl}/workflow/widget/${state.widgetId}/contact`,
         {
           method: "POST",
           credentials: "include",
           headers: {
+            ...widgetHeaders,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -318,11 +331,13 @@ const hash = crypto.createHmac('sha256', secret).update(userId).digest('hex');`,
     dispatch({ type: "SET_VALIDATION_STATUS", payload: "pending" });
 
     try {
+      const widgetHeaders = await getWidgetAuthHeaders();
       const response = await fetch(
         `${backendAPIUrl}/workflow/widget/${stateRef.current.widgetId}/config`,
         {
           method: "GET",
           headers: {
+            ...widgetHeaders,
             "Content-Type": "application/json",
           },
         }
@@ -491,10 +506,12 @@ const hash = crypto.createHmac('sha256', secret).update(userId).digest('hex');`,
       }
 
       // 2. Prepare the conversation
+      const widgetHeaders = await getWidgetAuthHeaders();
       const response = await fetch(`${backendAPIUrl}/stream/prepare`, {
         method: "POST",
         credentials: "include",
         headers: {
+          ...widgetHeaders,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -590,10 +607,12 @@ const hash = crypto.createHmac('sha256', secret).update(userId).digest('hex');`,
       }
 
       // 2. Prepare the call
+      const widgetHeaders = await getWidgetAuthHeaders();
       const response = await fetch(`${backendAPIUrl}/stream/prepare`, {
         method: "POST",
         credentials: "include",
         headers: {
+          ...widgetHeaders,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -678,12 +697,14 @@ const hash = crypto.createHmac('sha256', secret).update(userId).digest('hex');`,
       const queryId = source === "intervo.ai" ? agentId : state.widgetId;
       const idType = source === "intervo.ai" ? "agentId" : "widgetId";
 
+      const widgetHeaders = await getWidgetAuthHeaders();
       const response = await fetch(
         `${backendAPIUrl}/workflow/widget/${state.widgetId}/call-summary?${idType}=${queryId}&activityId=${state.activityId}`,
         {
           method: "GET",
           credentials: "include",
           headers: {
+            ...widgetHeaders,
             "Content-Type": "application/json",
           },
         }

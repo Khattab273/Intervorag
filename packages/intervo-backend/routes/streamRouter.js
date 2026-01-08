@@ -7,11 +7,42 @@ const { v4: uuidv4 } = require("uuid");
 const Agent = require("../models/Agent");
 const mongoose = require("mongoose");
 const { apiLimiter } = require("../lib/rateLimitMiddleware");
+const authenticateUser = require("../lib/authMiddleware");
+const {
+  createWidgetTokenGuard,
+  validateTwilioSignature,
+} = require("../lib/publicAccessPolicy");
 
 // Get the model for the published agents collection
 const AgentPublishedModel = mongoose.model("AgentPublished"); // Assumes already registered
 
 router.use(apiLimiter);
+
+const getWidgetIdFromConfig = (req) => {
+  const aiConfig = req.body?.aiConfig;
+  if (!aiConfig) {
+    return null;
+  }
+
+  try {
+    const parsedConfig =
+      typeof aiConfig === "string" ? JSON.parse(aiConfig) : aiConfig;
+    return parsedConfig?.widgetId || null;
+  } catch (error) {
+    console.error("Failed to parse aiConfig for widget token validation:", error);
+    return null;
+  }
+};
+
+const requireWidgetToken = createWidgetTokenGuard(getWidgetIdFromConfig);
+
+const requireUserOrWidgetToken = (req, res, next) => {
+  if (req.cookies?.authToken) {
+    return authenticateUser(req, res, next);
+  }
+
+  return requireWidgetToken(req, res, next);
+};
 
 let client;
 if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
@@ -26,7 +57,7 @@ if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
 }
 
 // This gets called from both playground and from a real-time call
-router.post("/prepare", async (req, res) => {
+router.post("/prepare", requireUserOrWidgetToken, async (req, res) => {
   return res.json({ success: true, message: "Prepare route is deprecated" });
   try {
     let aiConfig = {};
@@ -89,7 +120,7 @@ router.post("/prepare", async (req, res) => {
 });
 
 //This endpoint gets called from the playground and also from a real-time call
-router.post("/", async (req, res) => {
+router.post("/", validateTwilioSignature, async (req, res) => {
   console.log("Twilio voice request received (stream)");
   /*
      aiConfig: '{"sttService":"google","aiEndpoint":"gpt4","ttsService":"google","voiceType":"adam","leadPrompt":"I want to collection information about the business nature of our users.","introduction":"Hey there! Thanks for getting in touch with CodeDesign.ai. How can we be of assistance."}',
@@ -248,7 +279,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.post("/stream-status", (req, res) => {
+router.post("/stream-status", validateTwilioSignature, (req, res) => {
   const status = req.body.StreamStatus;
   const track = req.body.Track;
 
@@ -259,7 +290,7 @@ router.post("/stream-status", (req, res) => {
   res.sendStatus(200);
 });
 
-router.post("/stream-status-internal", (req, res) => {
+router.post("/stream-status-internal", validateTwilioSignature, (req, res) => {
   res.sendStatus(200);
 });
 
