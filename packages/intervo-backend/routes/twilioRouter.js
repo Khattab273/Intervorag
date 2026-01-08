@@ -4,10 +4,12 @@ const twilio = require("twilio");
 const PhoneNumber = require("../models/PhoneNumber");
 //!Incomplete module.
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const TwilioIntegration = require("../models/TwilioIntegration");
 const { encrypt, decrypt } = require("../utils/encryption");
 
-// Apply authentication middleware
+// Apply rate limiting and authentication middleware
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 // Save and validate Twilio credentials

@@ -9,8 +9,11 @@ const ConversationState=require("../models/ConversationState");
 const Workspace = require('../models/Workspace');
 const PhoneNumber = require('../models/PhoneNumber');
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const mongoose = require('mongoose');
 const { verifyAgentWorkspace } = require("../lib/checkOwnership");
+
+router.use(apiLimiter);
 
 // Middleware to authenticate using apiKey from headers and uniqueIdentifier from the URL
 const authenticateApiKeyAndIdentifier = async (req, res, next) => {

@@ -6,11 +6,13 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.NEXTAUTH_SECRET;
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || JWT_SECRET;
 const Workspace = require('../models/Workspace');
-const { magicLinkLimiter } = require('../lib/rateLimitMiddleware');
+const { authLimiter, magicLinkLimiter } = require('../lib/rateLimitMiddleware');
 const { sendMagicLinkEmail } = require('../lib/emailService');
 const PendingVerification = require('../models/PendingVerification');
 const crypto = require('crypto');
 const { createWorkspace } = require('../lib/workspaceService');
+
+router.use(authLimiter);
 
 
 // Google authentication route

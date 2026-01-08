@@ -2,7 +2,9 @@ const express = require('express');
 const User = require('../models/User'); // Your User model
 const router = express.Router();
 const authenticateUser = require('../lib/authMiddleware');
+const { apiLimiter } = require('../lib/rateLimitMiddleware');
 
+router.use(apiLimiter);
 
 // Endpoint to create or update a user using Google ID
 router.post('/', async (req, res) => {

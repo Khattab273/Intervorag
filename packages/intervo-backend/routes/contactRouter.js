@@ -4,8 +4,10 @@ const Contact = require("../models/Contact");
 const User = require("../models/User"); // Needed for workspace check
 const Agent = require("../models/Agent"); // Needed for agent check
 const authenticateUser = require("../lib/authMiddleware"); // Authentication middleware
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 
-// Middleware to authenticate all contact routes
+// Middleware to rate limit and authenticate all contact routes
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 // Middleware to get user's active workspace and attach to request

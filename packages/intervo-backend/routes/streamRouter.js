@@ -6,9 +6,12 @@ const PreCallAudioManager = require("../services/PreCallAudioManager");
 const { v4: uuidv4 } = require("uuid");
 const Agent = require("../models/Agent");
 const mongoose = require("mongoose");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 
 // Get the model for the published agents collection
 const AgentPublishedModel = mongoose.model("AgentPublished"); // Assumes already registered
+
+router.use(apiLimiter);
 
 let client;
 if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {

@@ -5,6 +5,7 @@ const twilioClient = require("twilio")(
   process.env.TWILIO_AUTH_TOKEN
 );
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const fs = require('fs');
 const path = require('path');
 //i want you to create an endpoint that will get a json encoded audio stream and an array list of events
@@ -14,6 +15,8 @@ const googleSpeechRecognize = require('../services/nonStreamGoogleSpeechToText')
 const InteractiveSession = require('../models/InteractiveSession');
 
 const router = express.Router();
+
+router.use(apiLimiter);
 
 // Store chunks temporarily (in production, consider using Redis or another storage solution)
 const audioChunks = new Map();

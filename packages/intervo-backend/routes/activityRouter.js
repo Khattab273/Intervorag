@@ -4,10 +4,12 @@ const Activity = require("../models/Activity");
 const User = require("../models/User");
 const { verifyAgentWorkspace } = require("../lib/checkOwnership");
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
 const { Readable } = require('stream');
 
-// Apply authentication middleware to all routes
+// Apply rate limiting and authentication middleware to all routes
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 // --- Configure Minimal S3 Client for GetObject ---

@@ -2,7 +2,9 @@ const express = require("express");
 const router = express.Router();
 const Tool = require("../models/Tool");
 const authenticateUser = require("../lib/authMiddleware");
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 
+router.use(apiLimiter);
 router.use(authenticateUser);
 
 router.get("/", async (req, res) => {

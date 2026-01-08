@@ -5,10 +5,13 @@ const { handleOpenAIStream } = require("../services/openAI"); // OpenAI service
 const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
+const { apiLimiter } = require("../lib/rateLimitMiddleware");
 
 const VoiceResponse = require("twilio").twiml.VoiceResponse;
 
 let conversationHistory = ""; // Keep conversation history
+
+router.use(apiLimiter);
 
 router.post("/", async (req, res) => {
   console.log("Twilio voice request received");
