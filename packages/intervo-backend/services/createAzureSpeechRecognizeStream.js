@@ -1,5 +1,4 @@
 const sdk = require("microsoft-cognitiveservices-speech-sdk");
-const WebSocket = require("ws");
 const { Transform } = require('stream');
 
 function mulawToPcm(mulawData) {
@@ -53,7 +52,7 @@ async function createAzureSpeechRecognizeStream({
   timer, 
   ws, 
   wss, 
-  agentRooms, // The agent rooms map for room-specific broadcasting
+  agentRoomBroker, // The agent rooms broker for room-specific broadcasting
   ignoreNewTranscriptions, 
   isProcessingTTS, 
   processTranscription, 
@@ -158,13 +157,8 @@ async function createAzureSpeechRecognizeStream({
             transcription;
           
           // Send processed transcription to room-specific clients only
-          if (ws.roomKey && agentRooms && agentRooms.has(ws.roomKey)) {
-            const room = agentRooms.get(ws.roomKey);
-            room.forEach((client) => {
-              if (client.readyState === WebSocket.OPEN && client !== ws) {
-                client.send(JSON.stringify({ event: "transcription", source: "user", text: processedTranscription }));
-              }
-            });
+          if (ws.roomKey && agentRoomBroker) {
+            await agentRoomBroker.broadcast(ws.roomKey, { event: "transcription", source: "user", text: processedTranscription }, { exclude: ws });
           }
 
           clearTimeout(inactivityTimeout); // Clear timer on final result

@@ -2,9 +2,9 @@ const removeMarkdown = require('remove-markdown');
 const ConversationState = require('./ConversationState');
 
 class OrchestrationManager {
-constructor(config, agentRooms) {
+constructor(config, agentRoomBroker) {
 
-  console.log("*********orchestartionNodes*********", config, agentRooms)
+  console.log("*********orchestartionNodes*********", config, agentRoomBroker)
     this.agents = new Map();
     this.workflowAgents = new Map(); // Map nodeId -> BaseAgent instance
 
@@ -13,6 +13,7 @@ constructor(config, agentRooms) {
     this.isProcessingTTS = false;
     
     this.config = config;
+    this.agentRooms = agentRoomBroker;
     this.logger = null; // Will be initialized when we have conversationId
     this.toolManager = null; // Will be initialized dynamically
     this.orchestrationFlow = null;

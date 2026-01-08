@@ -1,5 +1,4 @@
 const { AssemblyAI } = require('assemblyai');
-const WebSocket = require('ws');
 
 const assembly_api_key = process.env.ASSEMBLYAI_API_KEY;
 const SAMPLE_RATE = 8000; // Sample rate expected by Twilio Media Streams (MULAW)
@@ -9,7 +8,7 @@ async function createAssemblyAIRecognizeStream({
   timer,
   ws, // The specific WebSocket connection for this call
   wss, // The WebSocket server instance (for broadcasting to UI clients)
-  agentRooms, // The agent rooms map for room-specific broadcasting
+  agentRoomBroker, // The agent rooms broker for room-specific broadcasting
   ignoreNewTranscriptions, // Flag to ignore new transcriptions while processing
   isProcessingTTS, // Flag indicating TTS is currently active
   processTranscription, // Callback function from twilioHandler to process final transcription
@@ -164,13 +163,8 @@ async function createAssemblyAIRecognizeStream({
              transcription;
            
            // --- Broadcast to specific room only ---
-           if (ws.roomKey && agentRooms && agentRooms.has(ws.roomKey)) {
-             const room = agentRooms.get(ws.roomKey);
-             room.forEach((client) => {
-               if (client.readyState === WebSocket.OPEN && client !== ws) {
-                 client.send(JSON.stringify({ event: "transcription", source: "user", text: processedTranscription }));
-               }
-             });
+           if (ws.roomKey && agentRoomBroker) {
+             await agentRoomBroker.broadcast(ws.roomKey, { event: "transcription", source: "user", text: processedTranscription }, { exclude: ws });
            }
            // -----------------------------------------------------
 

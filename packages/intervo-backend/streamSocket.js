@@ -4,15 +4,52 @@ const handleTwilioConnection = require('./handlers/twilioHandler');
 const handleClientConnection = require('./handlers/clientHandler');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
+const { createClient } = require("redis");
+const AgentRoomBroker = require("./services/AgentRoomBroker");
 
 // Get the model for the published agents collection
 const AgentPublishedModel = mongoose.model('AgentPublished'); // Assumes already registered
 
 module.exports = function (server) {
   const wss = new WebSocket.Server({ server });
-  
-  // Add a Map to store agent rooms
-  const agentRooms = new Map();
+  const redisHost = process.env.REDIS_HOST || "127.0.0.1";
+  const redisPort = Number(process.env.REDIS_PORT) || 6379;
+  const redisPassword = process.env.REDIS_PASSWORD || undefined;
+
+  const redisClient = createClient({
+    socket: {
+      host: redisHost,
+      port: redisPort,
+    },
+    password: redisPassword,
+  });
+
+  const redisSubscriber = redisClient.duplicate();
+
+  redisClient.on("error", (err) => {
+    console.error("Redis client error:", err);
+  });
+
+  redisSubscriber.on("error", (err) => {
+    console.error("Redis subscriber error:", err);
+  });
+
+  redisClient.connect().catch((err) => {
+    console.error("Failed to connect Redis client:", err);
+  });
+
+  redisSubscriber.connect().catch((err) => {
+    console.error("Failed to connect Redis subscriber:", err);
+  });
+
+  const agentRoomBroker = new AgentRoomBroker({
+    redisClient,
+    redisSubscriber,
+  });
+
+  agentRoomBroker.initialize().catch((err) => {
+    console.error("Failed to initialize agent room broker:", err);
+  });
 
   wss.on("connection", (ws, req) => {
     console.log("New WebSocket connection");
@@ -58,20 +95,19 @@ module.exports = function (server) {
             const roomKey = `${agentId}-${conversationId}`;
             console.log(`${type || "Twilio"} connection - roomKey: ${roomKey}, agentId: ${agentId}, conversationId: ${conversationId}`)
 
-            if (!agentRooms.has(roomKey)) {
+            if (!agentRoomBroker.hasRoom(roomKey)) {
               console.log("Creating new agent room for:", roomKey);
-              agentRooms.set(roomKey, new Set());
             }
-            agentRooms.get(roomKey).add(ws);
+            await agentRoomBroker.join(roomKey, ws);
             
             // Store the roomKey on the WebSocket for cleanup
             ws.roomKey = roomKey;
             
             // Initialize the handlers only once
-            console.log("Setting up handlers, agentRooms size:", agentRooms.size);
+            console.log("Setting up handlers, agentRooms size:", agentRoomBroker.getRoomCount());
 
             if (type === "client") {
-              const connectionSuccess = handleClientConnection(ws, req, wss, agentRooms);
+              const connectionSuccess = handleClientConnection(ws, req, wss, agentRoomBroker);
               if (!connectionSuccess) {
                 console.log("Client connection handler failed, closing connection");
                 ws.close();
@@ -83,10 +119,10 @@ module.exports = function (server) {
               if(conversationMode==="chat"){
 
                 //i want to transform data.start.customParameters by passing it
-                handleTwilioConnection(ws, req, wss, agentRooms, mode="chat", msg.start.customParameters);
+                handleTwilioConnection(ws, req, wss, agentRoomBroker, mode="chat", msg.start.customParameters);
               }
             } else {
-              handleTwilioConnection(ws, req, wss, agentRooms, mode="call", msg.start.customParameters);
+              handleTwilioConnection(ws, req, wss, agentRoomBroker, mode="call", msg.start.customParameters);
             }
 
             handlerInitialized = true;
@@ -102,11 +138,8 @@ module.exports = function (server) {
 
     ws.on('close', () => {
       // Clean up room membership when connection closes
-      if (ws.roomKey && agentRooms.has(ws.roomKey)) {
-        agentRooms.get(ws.roomKey).delete(ws);
-        if (agentRooms.get(ws.roomKey).size === 0) {
-          agentRooms.delete(ws.roomKey);
-        }
+      if (ws.roomKey) {
+        agentRoomBroker.leave(ws.roomKey, ws);
       }
     });
   });
