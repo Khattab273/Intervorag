@@ -21,6 +21,8 @@ const WebSocket = require("ws");
 const twilio = require("twilio");
 const mongoose = require("mongoose");
 const session = require("express-session");
+const RedisStore = require("connect-redis").default;
+const { createClient } = require("redis");
 const connectDB = require('./config/dbConfig');
 const cookieParser = require('cookie-parser');
 const siteDataService = require('./lib/siteDataService');
@@ -104,16 +106,46 @@ const apiKey = process.env.TWILIO_API_KEY;
 const apiSecret = process.env.TWILIO_API_SECRET;
 const appSid = process.env.TWILIO_APP_SID;
 
+const redisHost = process.env.REDIS_HOST || "127.0.0.1";
+const redisPort = Number(process.env.REDIS_PORT) || 6379;
+const redisPassword = process.env.REDIS_PASSWORD || undefined;
+const sessionTtlSeconds = Number(process.env.SESSION_TTL_SECONDS) || 60 * 60 * 24 * 7;
+const sessionSameSite =
+  process.env.SESSION_SAME_SITE || (process.env.NODE_ENV === "production" ? "none" : "lax");
+
+const redisClient = createClient({
+  socket: {
+    host: redisHost,
+    port: redisPort,
+  },
+  password: redisPassword,
+});
+
+redisClient.on("error", (err) => {
+  console.error("Redis client error:", err);
+});
+
+redisClient.connect().catch((err) => {
+  console.error("Failed to connect to Redis:", err);
+});
+
 // // Session middleware for authentication
 app.use(
   session({
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    rolling: true,
+    store: new RedisStore({
+      client: redisClient,
+      ttl: sessionTtlSeconds,
+      prefix: "session:",
+    }),
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // Set to true in production
-      sameSite: 'lax', // Helps handle cross-origin requests properly
+      secure: process.env.NODE_ENV === "production", // Set to true in production
+      sameSite: sessionSameSite, // Helps handle cross-origin requests properly
+      maxAge: sessionTtlSeconds * 1000,
     },
   })
 );
@@ -232,4 +264,3 @@ require('./streamSocket')(server);
 server.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
-
