@@ -145,4 +145,3 @@ async function createSpeechRecognizeStream(config, params) {
 }
 
 module.exports = createSpeechRecognizeStream;
-

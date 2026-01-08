@@ -55,7 +55,7 @@ function extractConfig(customParameters) {
   };
 }
 
-function handleTwilioConnection(ws, req, wss, agentRooms, mode="call", customParametersFromParams) {
+function handleTwilioConnection(ws, req, wss, agentRoomBroker, mode="call", customParametersFromParams) {
 
   console.log(customParametersFromParams, "customParametersFromParams")
     let config={};
@@ -197,7 +197,7 @@ function handleTwilioConnection(ws, req, wss, agentRooms, mode="call", customPar
 
         /* Orchestration manager starts*/
         //we initiate the orchestration manager with the connected nodes
-        orchestrator = await new OrchestrationManager(config, agentRooms).initialize();
+        orchestrator = await new OrchestrationManager(config, agentRoomBroker).initialize();
 
         // Get intentClassifierNode directly from workflow nodes
 
@@ -281,9 +281,9 @@ function handleTwilioConnection(ws, req, wss, agentRooms, mode="call", customPar
             text: greeting.text,
             timestamp: new Date()
           });
-          console.log("*****before initial gretting completed****", agentRooms)
+          console.log("*****before initial gretting completed****", agentRoomBroker)
 
-          await broadcastToAgentRoom(agentRooms, ws.roomKey, ws, greeting, config.conversationId);
+          await broadcastToAgentRoom(agentRoomBroker, ws.roomKey, ws, greeting, config.conversationId);
         
           if(mode === "call"){
           await new Promise((resolve, reject) => {
@@ -303,7 +303,7 @@ function handleTwilioConnection(ws, req, wss, agentRooms, mode="call", customPar
             timer,
             ws,
             wss,
-            agentRooms,
+            agentRoomBroker,
             ignoreNewTranscriptions,
             isProcessingTTS,
             processTranscription,
@@ -539,7 +539,7 @@ function handleTwilioConnection(ws, req, wss, agentRooms, mode="call", customPar
 
       console.log(conversationHistory, "conversationHistory")
 
-      registerOrchestratorHandlers(orchestrator, ws, wss, streamSid, config, timer, conversationHistory, agentRooms, config.agent, callRecorder, userInterrupted);
+      registerOrchestratorHandlers(orchestrator, ws, wss, streamSid, config, timer, conversationHistory, agentRoomBroker, config.agent, callRecorder, userInterrupted);
 
       try {
 
@@ -579,38 +579,32 @@ function startTimer() {
   return () => `${((Date.now() - startTime) / 1000).toFixed(2)}s`;
 }
 
-async function broadcastToAgentRoom(agentRooms, roomKey, ws, response, conversationId) {
-  const agentRoom = agentRooms.get(roomKey);
-  
-  if (agentRoom) {
+async function broadcastToAgentRoom(agentRoomBroker, roomKey, ws, response, conversationId) {
+  if (agentRoomBroker.hasRoom(roomKey)) {
     // Get conversation state directly
     const state = await require('../services/ConversationState').getInstance(conversationId);
     
     // Send the original message
-    agentRoom.forEach((client) => {
-      if (client.readyState === WebSocket.OPEN /*&& client !== ws*/) {
-        client.send(JSON.stringify({ 
-          event: "transcription", 
-        text: response.text,
-          source: response.agent === "user" ? "user" : "assistant",
-          priority: response.priority
-        }));
+    await agentRoomBroker.broadcast(roomKey, {
+      event: "transcription",
+      text: response.text,
+      source: response.agent === "user" ? "user" : "assistant",
+      priority: response.priority
+    });
 
-        // Send state as a separate event
-        client.send(JSON.stringify({
-          event: "conversationState",
-          state: {
-            phase: state.conversationPhase,
-            currentAgent: state.currentAgent,
-            memoryState: state.getMemoryState()
-          }
-        }));
+    // Send state as a separate event
+    await agentRoomBroker.broadcast(roomKey, {
+      event: "conversationState",
+      state: {
+        phase: state.conversationPhase,
+        currentAgent: state.currentAgent,
+        memoryState: state.getMemoryState()
       }
     });
   }
 }
 
-function registerOrchestratorHandlers(orchestrator, ws, wss, streamSid, config, timer, conversationHistory, agentRooms, agent, callRecorder, userInterrupted) {
+function registerOrchestratorHandlers(orchestrator, ws, wss, streamSid, config, timer, conversationHistory, agentRoomBroker, agent, callRecorder, userInterrupted) {
   // Register general response handler (for UI updates)
   orchestrator.onResponse({
     type: 'general',
@@ -622,7 +616,7 @@ function registerOrchestratorHandlers(orchestrator, ws, wss, streamSid, config, 
       // });
       
       // Replace the broadcasting code with the new function
-              broadcastToAgentRoom(agentRooms, ws.roomKey, ws, response, config.conversationId);
+              broadcastToAgentRoom(agentRoomBroker, ws.roomKey, ws, response, config.conversationId);
     }
   });
 

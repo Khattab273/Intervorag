@@ -1,8 +1,7 @@
-const WebSocket = require('ws');
 const cookie = require('cookie');
 const jwt = require('jsonwebtoken');
 
-function handleClientConnection(ws, req, wss, agentRooms) {
+function handleClientConnection(ws, req, wss, agentRoomBroker) {
   try {
     console.log("tokennnnnnnn");
     const cookies = cookie.parse(req.headers.cookie || '');
