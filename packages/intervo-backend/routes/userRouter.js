@@ -5,6 +5,7 @@ const authenticateUser = require('../lib/authMiddleware');
 const { apiLimiter } = require('../lib/rateLimitMiddleware');
 
 router.use(apiLimiter);
+router.use(authenticateUser);
 
 // Endpoint to create or update a user using Google ID
 router.post('/', async (req, res) => {
@@ -37,7 +38,7 @@ router.post('/', async (req, res) => {
 
 
 // Get complete user profile information
-router.get('/profile', authenticateUser, async (req, res) => {
+router.get('/profile', async (req, res) => {
   try {
     // Get user data from database using ID from auth middleware
     const user = await User.findById(req.user.id)
@@ -56,7 +57,7 @@ router.get('/profile', authenticateUser, async (req, res) => {
 });
 
 // Update user profile
-router.put('/profile', authenticateUser, async (req, res) => {
+router.put('/profile', async (req, res) => {
   try {
     const { onBoardingData, onboardingCompleted, agentOnboardingCompleted } = req.body;
     

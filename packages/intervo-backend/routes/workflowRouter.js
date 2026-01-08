@@ -8,10 +8,10 @@ const Activity = require("../models/Activity");
 const ConversationState=require("../models/ConversationState");
 const Workspace = require('../models/Workspace');
 const PhoneNumber = require('../models/PhoneNumber');
-const authenticateUser = require("../lib/authMiddleware");
 const { apiLimiter } = require("../lib/rateLimitMiddleware");
 const mongoose = require('mongoose');
 const { verifyAgentWorkspace } = require("../lib/checkOwnership");
+const { createWidgetTokenGuard } = require("../lib/publicAccessPolicy");
 
 router.use(apiLimiter);
 
@@ -287,7 +287,9 @@ router.post("/:uniqueIdentifier", authenticateApiKeyAndIdentifier, async (req, r
 
 // Create a widget router to handle all widget-specific routes
 const widgetRouter = express.Router({ mergeParams: true });
+const requireWidgetToken = createWidgetTokenGuard((req) => req.params.widgetId);
 router.use('/widget/:widgetId', widgetRouter);
+widgetRouter.use(requireWidgetToken);
 
 //Create a widget contact
 widgetRouter.post("/contact", async (req, res) => {

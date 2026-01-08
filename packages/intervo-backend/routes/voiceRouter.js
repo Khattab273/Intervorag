@@ -6,6 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const { v4: uuidv4 } = require("uuid"); // For generating unique IDs
 const { apiLimiter } = require("../lib/rateLimitMiddleware");
+const { validateTwilioSignature } = require("../lib/publicAccessPolicy");
 
 const VoiceResponse = require("twilio").twiml.VoiceResponse;
 
@@ -13,7 +14,7 @@ let conversationHistory = ""; // Keep conversation history
 
 router.use(apiLimiter);
 
-router.post("/", async (req, res) => {
+router.post("/", validateTwilioSignature, async (req, res) => {
   console.log("Twilio voice request received");
   console.log(req.body, "Full request body from Twilio"); // Log full body
 

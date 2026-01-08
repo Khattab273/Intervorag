@@ -11,6 +11,9 @@ const { sendMagicLinkEmail } = require('../lib/emailService');
 const PendingVerification = require('../models/PendingVerification');
 const crypto = require('crypto');
 const { createWorkspace } = require('../lib/workspaceService');
+const mongoose = require('mongoose');
+
+const AgentPublishedModel = mongoose.model('AgentPublished');
 
 router.use(authLimiter);
 
@@ -290,11 +293,15 @@ router.get('/ws-token', async (req, res) => {
   
   // If widgetId exists, generate anonymous token
   if (widgetId) {
+    const agent = await AgentPublishedModel.findOne({ widgetId });
+    if (!agent) {
+      return res.status(404).json({ message: 'Widget not found' });
+    }
     const wsToken = jwt.sign(
       { 
         userId: 'anonymous',
         email: 'anon@example.com',
-        purpose: 'websocket',
+        purpose: 'widget',
         widgetId: widgetId
       },
       JWT_SECRET,

@@ -17,6 +17,7 @@ const InteractiveSession = require('../models/InteractiveSession');
 const router = express.Router();
 
 router.use(apiLimiter);
+router.use(authenticateUser);
 
 // Store chunks temporarily (in production, consider using Redis or another storage solution)
 const audioChunks = new Map();
